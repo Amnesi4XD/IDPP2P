@@ -1,76 +1,140 @@
-#!/usr/bin/python
-
-import time
 import socket
-from _thread import *
+import sys
+import time
+from _thread import start_new_thread
+import os
+import hashlib
+import socket
 
+
+# Verifica se o número correto de argumentos foi passado
+# if len(sys.argv) != 3:
+#     print("Uso: python3 cliente.py <IP_SERVIDOR> <DIRETORIO>")
+#     sys.exit(1)
+
+# Configurações do Cliente
+ENDERECO_SERVIDOR = ("127.0.0.1", 54494)
+BUFFER_SIZE = 1024
+
+# Informações do Cliente
+senha = "123456"
 porta_tcp = None
+pasta_compartilhada = "/home/rafanog/desktop/redes/armazena"
+# Socket UDP para comunicação com o servidor
+socket_udp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
-def configurar_ambiente():
-    pass
 
 
 def descobre_porta_disponivel():
-    # Define a porta inicial
-    porta_inicial = 31337
-
-    while True:
-        try:
-            # Tenta criar um socket na porta especificada
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.bind(('localhost', porta_inicial))
-            # Se bem-sucedido, retorna a porta
-            return porta_inicial
-        except socket.error:
-            # Se a porta estiver em uso, tenta a próxima
-            porta_inicial += 1
-
-def controle_udp():
-    # Código do serviço UDP
-    while True:
-        print('Controle UDP funcionando')
-        time.sleep(5)
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.bind(('', 0))  # O sistema operacional irá atribuir uma porta disponível
+    porta = s.getsockname()[1]  # Obtemos a porta atribuída
+    s.close()  # Fechamos o socket, a porta pode ser reutilizada
+    return porta
 
 
-def servico_tcp(client):
-    # Código do serviço TCP
-    print('Nova conexao TCP')
-    client.send(b'OI')
-    client.close()
+def registrar_no_servidor(senha):
+    porta_tcp = descobre_porta_disponivel()
+    mensagem = f"REG {senha} {porta_tcp} {listar_arquivos_disponiveis()}"
+    socket_udp.sendto(mensagem.encode(), ENDERECO_SERVIDOR)
+    resposta, _ = socket_udp.recvfrom(BUFFER_SIZE)
+    print("Resposta do servidor:", resposta.decode())
 
+def atualizar_arquivos_no_servidor(pasta):
+    arquivos = listar_arquivos_pasta(pasta)
+    arquivos_compartilhados = ';'.join([f"{hash_arquivo},{nome_arquivo}" for hash_arquivo, nome_arquivo in arquivos])
+
+    mensagem = f"UPD {senha} {porta_tcp} {arquivos_compartilhados}"
+    socket_udp.sendto(mensagem.encode(), ENDERECO_SERVIDOR)
+
+    resposta, _ = socket_udp.recvfrom(BUFFER_SIZE)
+    print("Resposta do servidor à atualização:", resposta.decode())
+
+def listar_arquivos_disponiveis():
+    mensagem = "LST"
+    socket_udp.sendto(mensagem.encode(), ENDERECO_SERVIDOR)
+    resposta, _ = socket_udp.recvfrom(BUFFER_SIZE)
+    print("Arquivos disponíveis:", resposta.decode())
+
+def desconectar_do_servidor():
+    mensagem = f"END {senha} {porta_tcp}"
+    socket_udp.sendto(mensagem.encode(), ENDERECO_SERVIDOR)
+    resposta, _ = socket_udp.recvfrom(BUFFER_SIZE)
+    print("Resposta do servidor:", resposta.decode())
+
+def servico_tcp(cliente, pasta):
+    mensagem = cliente.recv(BUFFER_SIZE).decode()
+    comando, nome_arquivo = mensagem.split()
+
+    if comando == 'GET':
+        enviar_arquivo(cliente, nome_arquivo, pasta)
+    elif comando == 'SEND':
+        receber_arquivo(cliente, nome_arquivo, pasta)
+    else:
+        cliente.send(b"ERRO: COMANDO INVALIDO")
+
+    cliente.close()
 
 def controle_tcp():
     global porta_tcp
-    _socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    _socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    _socket.bind(('', porta_tcp))
-    _socket.listen(4096)
+    socket_tcp = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    socket_tcp.bind(('', porta_tcp))
+    socket_tcp.listen(5)
     while True:
-        client, addr = _socket.accept()
-        start_new_thread(servico_tcp, (client, ))
+        cliente, endereco = socket_tcp.accept()
+        start_new_thread(servico_tcp, (cliente,))
 
+def enviar_arquivo(cliente, nome_arquivo, pasta):
+    caminho_arquivo = os.path.join(pasta, nome_arquivo)
+    if not os.path.exists(caminho_arquivo):
+        cliente.send(b"ERRO: ARQUIVO NAO ENCONTRADO")
+        return
 
-def inicia_controle_tcp():
-    controle_tcp()
+    cliente.send(b"OK")
 
+    with open(caminho_arquivo, 'rb') as arquivo:
+        while True:
+            dados = arquivo.read(BUFFER_SIZE)
+            if not dados:
+                break
+            cliente.send(dados)
 
-def inicia_controle_udp():
-    controle_udp()
+def receber_arquivo(cliente, nome_arquivo, pasta):
+    caminho_arquivo = os.path.join(pasta, nome_arquivo)
+    with open(caminho_arquivo, 'wb') as arquivo:
+        while True:
+            dados = cliente.recv(BUFFER_SIZE)
+            if not dados:
+                break
+            arquivo.write(dados)
 
+    
+def gerar_hash_arquivo(nome_arquivo):
+    hasher = hashlib.sha256()
+    with open(nome_arquivo, 'rb') as arquivo:
+        buf = arquivo.read()
+        hasher.update(buf)
+    return hasher.hexdigest()
+
+def listar_arquivos_pasta(pasta):
+    arquivos = []
+    for nome_arquivo in os.listdir(pasta):
+        if os.path.isfile(os.path.join(pasta, nome_arquivo)):
+            hash_arquivo = gerar_hash_arquivo(os.path.join(pasta, nome_arquivo))
+            arquivos.append((hash_arquivo, nome_arquivo))
+    return arquivos
 
 def main():
     global porta_tcp
     porta_tcp = descobre_porta_disponivel()
 
-    configurar_ambiente()
+    registrar_no_servidor()
+    # Iniciar outras funcionalidades conforme necessário
 
-    start_new_thread(inicia_controle_tcp, ())
-    start_new_thread(inicia_controle_udp, ())
-
+    start_new_thread(controle_tcp, ())
     while True:
+        # Loop principal do cliente
         time.sleep(60)
-        print('Cliente em execução')
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
