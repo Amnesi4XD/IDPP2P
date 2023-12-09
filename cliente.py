@@ -85,14 +85,14 @@ def controle_udp(senha, socket_cliente, endereco_servidor):
                 print('Erro ao tentar conectar no servidor')
                 sys.exit(0)
 
-def servico_tcp(client, diretorio):
+def servico_tcp(client):
     # Código do serviço TCP
     print('Nova conexao TCP')
     client.send(b'OI')
     client.close()
 
 
-def controle_tcp(senha):
+def controle_tcp():
     _socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     _socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     _socket.bind(('', informacao_cliente['porta_tcp']))
@@ -103,8 +103,8 @@ def controle_tcp(senha):
         
 
 
-def inicia_controle_tcp(diretorio):
-    controle_tcp(diretorio)
+def inicia_controle_tcp():
+    controle_tcp()
 
 
 def inicia_controle_udp():
