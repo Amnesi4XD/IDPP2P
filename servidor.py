@@ -14,7 +14,7 @@ def registrar_cliente(mensagem, endereco_cliente):
 
     senha = mensagem[1]
     porta = int(mensagem[2])
-    str_arquivos = mensagem[3]
+    str_arquivos = mensagem[3] #Ex: MD51,NOME1;MD52,NOME2;MD53,NOME3;...;MD5N,NOMEN
 
     # Verifica se o cliente já está registrado
     if (senha, porta) in informacoes_cliente:
@@ -22,17 +22,10 @@ def registrar_cliente(mensagem, endereco_cliente):
 
     # Processa a lista de arquivos
     lista_arquivos = str_arquivos.split(';')
-    arquivos_compartilhados = 0
+    arquivos_compartilhados = lista_arquivos.count 
+    
 
-    for info_arquivo in lista_arquivos:
-        partes_mensagem_arquivo = info_arquivo.split(',')
-        if len(partes_mensagem_arquivo) == 2:
-            hash_arquivo, nome_arquivo = partes_mensagem_arquivo[0], partes_mensagem_arquivo[1]
-            # Adiciona o arquivo ao cliente
-            if endereco_cliente not in informacoes_cliente:
-                informacoes_cliente[endereco_cliente] = {'senha': senha, 'porta': porta, 'arquivos': {}}
-            informacoes_cliente[endereco_cliente]['arquivos'][nome_arquivo] = hash_arquivo
-            arquivos_compartilhados += 1
+
 
     return f"OK {arquivos_compartilhados}_REGISTERED_FILES"
 
@@ -43,24 +36,11 @@ def atualizar_cliente(mensagem, endereco_cliente):
 
     senha = mensagem[1]
     porta = int(mensagem[2])
-    arquivos_str = mensagem[3]
-
-    # Verifica se o cliente está registrado
-    if (senha, porta) not in [(info['senha'], info['porta']) for info in informacoes_cliente.values()]:
-        return "ERR IP_REGISTERED_WITH_DIFFERENT_PASSWORD"
+    arquivos_str = mensagem[3] #Ex: MD51,NOME1;MD52,NOME2;MD53,NOME3;...;MD5N,NOMEN
 
     # Processa a lista de arquivos
     arquivos_lista = arquivos_str.split(';')
-    arquivos_atualizados = 0
-
-    # Atualiza a lista de arquivos do cliente
-    for info_arquivo in arquivos_lista:
-        partes_arquivo = info_arquivo.split(',')
-        if len(partes_arquivo) == 2:
-            hash_arquivo, nome_arquivo = partes_arquivo[0], partes_arquivo[1]
-            # Atualiza o arquivo no cliente
-            informacoes_cliente[endereco_cliente]['arquivos'][nome_arquivo] = hash_arquivo
-            arquivos_atualizados += 1
+    arquivos_atualizados = len(arquivos_lista)
 
     return f"OK {arquivos_atualizados}_REGISTERED_FILES"
 

@@ -28,9 +28,6 @@ def listar_arquivos():
         elemento_lista = md5 + ',' + arquivo
         lista.append(elemento_lista)
     return lista
-def controle_udp(diretorio):
-    global porta_tcp
-    lista_arquivos = lista_arquivos(diretorio)
 
 def configurar_ambiente():
     #Pegando porta disponível
@@ -65,8 +62,7 @@ def descobre_porta_disponivel():
             porta_inicial += 1
         except socket.error:
             # Se a porta estiver em uso, tenta a próxima
-            return porta_inicial
-
+            informacao_cliente['porta_tcp'] = porta_inicial
 
 def controle_udp(senha, socket_cliente, endereco_servidor):
     while True:
@@ -91,7 +87,6 @@ def servico_tcp(client):
     client.send(b'OI')
     client.close()
 
-
 def controle_tcp():
     _socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     _socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
@@ -101,11 +96,8 @@ def controle_tcp():
         client, addr = _socket.accept()
         start_new_thread(servico_tcp, (client, ))
         
-
-
 def inicia_controle_tcp():
     controle_tcp()
-
 
 def inicia_controle_udp():
     # Inicia a conexão UDP
@@ -121,7 +113,6 @@ def inicia_controle_udp():
         sys.exit(0)
     controle_udp()
 
-
 def main():    
     configurar_ambiente()
     
@@ -132,7 +123,6 @@ def main():
     while True:
         time.sleep(60)
         print('Cliente em execução')
-
 
 if __name__ == '__main__':
     if len(sys.argv) == 2:
