@@ -68,7 +68,8 @@ def listar_arquivos():
 
     # Constrói a mensagem de resposta
     resposta = ';'.join([f"{arquivo['hash']},{arquivo['nome']},{','.join(arquivo['localizacoes'])}" for arquivo in lista_arquivos])
-
+    print("Lista de arquivos enviada")
+    resposta = "YES SIRRRRRRRRRRRRRRRRRR"
     return resposta
 
 # Função para processar mensagens END
@@ -91,16 +92,22 @@ def desconectar_cliente(mensagem, endereco_cliente):
 
 # Função principal do servidor
 def main():
+    print("Servidor iniciado")
     socket_servidor = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     socket_servidor.bind(ENDERECO_SERVIDOR)
 
-    print("Servidor iniciado. Aguardando conexões.")
-
     while True:
+        print("Would you like to close the server?")
+        print("(Y/N)")
+        answer = input()
+        if answer.upper() == "Y":
+            socket_servidor.close()
+            break
+        print("Aguardando conexões...")
         data, endereco_cliente = socket_servidor.recvfrom(BUFFER_SIZE)
         mensagem = data.decode('utf-8').split()
 
-        if not mensagem or len(mensagem) < 2:
+        if not mensagem or len(mensagem) < 0:
             response = "ERR INVALID_MESSAGE_FORMAT"
         else:
             msg_type = mensagem[0]

@@ -29,7 +29,7 @@ def listar_arquivos():
 
 def configurar_ambiente():
     #Pegando porta disponível
-    porta_tcp = descobre_porta_disponivel()
+    # porta_tcp = descobre_porta_disponivel()
     informacao_cliente['porta'] = porta_tcp
     
     #Gerando senha para conexão udp
@@ -79,6 +79,19 @@ def controle_udp(senha, socket_cliente, endereco_servidor):
             except:
                 print('Erro ao tentar conectar no servidor')
                 sys.exit(0)
+        elif opcao == '2':
+            #enviar LST para servidor
+            try:
+                mensagem = "LST"
+                socket_cliente.sendto(mensagem.encode('utf-8'), endereco_servidor)
+                data, server = socket_cliente.recvfrom(4096)
+                print(data.decode('utf-8'))
+            except:
+                print('Erro ao tentar conectar no servidor')
+                sys.exit(0)
+        elif opcao == '3':
+            socket_cliente.close()
+            sys.exit(0)
 
 def servico_tcp(client):
     # Código do serviço TCP
@@ -103,19 +116,19 @@ def inicia_controle_udp():
     socket_cliente = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     
     endereco_servidor = ('localhost', 54494)
-    
+    mensagem = f"REG {informacao_cliente['senha']} {informacao_cliente['porta_tcp']} {listar_arquivos()}"
     #Retirar após testes
     try:   
-        socket_cliente.sendto(f"REG {informacao_cliente['senha']} {porta_tcp} {listar_arquivos()}", endereco_servidor)
+        socket_cliente.sendto(mensagem.encode(), endereco_servidor)
     except:
         print('Erro ao tentar conectar no servidor')
         sys.exit(0)
-    controle_udp()
+    controle_udp(informacao_cliente['senha'], socket_cliente, endereco_servidor)
 
 def main():    
     configurar_ambiente()
-    
-    start_new_thread(inicia_controle_tcp(), ())
+    informacao_cliente['porta_tcp'] = 12346
+    # start_new_thread(inicia_controle_tcp(), ())
     start_new_thread(inicia_controle_udp(), ())
 
     while True:
@@ -123,7 +136,7 @@ def main():
         print('Cliente em execução')
 
 if __name__ == '__main__':
-    if len(sys.argv) == 2:
+    if len(sys.argv) == 3:
         informacao_cliente['ip'] = sys.argv[1]
         informacao_cliente['nome_diretorio'] = sys.argv[2]
         main()
