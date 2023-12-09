@@ -72,7 +72,8 @@ def controle_udp(senha, socket_cliente, endereco_servidor):
         opcao = input('Opção: ')
         if opcao == '1':
             try:
-                socket_cliente.sendto(f"UPD {informacao_cliente['porta_tcp']}", endereco_servidor)
+                mensagem = f"UDP {informacao_cliente['senha']}, {informacao_cliente['porta_tcp']}, {listar_arquivos()}"
+                socket_cliente.sendto(mensagem.encode(), endereco_servidor)
                 data, server = socket_cliente.recvfrom(4096)
                 print(data.decode('utf-8'))
             except:

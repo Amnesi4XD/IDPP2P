@@ -1,7 +1,7 @@
 import socket
 
 # Configurações do servidor
-ENDERECO_SERVIDOR = ('127.0.0.1', 54494)
+ENDERECO_SERVIDOR = ('', 54494)
 BUFFER_SIZE = 1024
 
 # Dicionário para armazenar informações dos clientes
