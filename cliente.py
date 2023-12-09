@@ -19,8 +19,6 @@ def gerar_senha():
     senha = ''.join(secrets.choice(caracteres) for _ in range(tamanho))
     return senha
 
-
-
 def listar_arquivos():
     lista = []
     for arquivo in os.listdir(informacao_cliente['nome_diretorio']):
@@ -116,7 +114,6 @@ def inicia_controle_udp():
 def main():    
     configurar_ambiente()
     
-
     start_new_thread(inicia_controle_tcp(), ())
     start_new_thread(inicia_controle_udp(), ())
 
