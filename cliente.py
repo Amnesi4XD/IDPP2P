@@ -69,7 +69,7 @@ def controle_udp(senha, socket_cliente, endereco_servidor):
         opcao = input('Opção: ')
         if opcao == '1':
             try:
-                mensagem = f"UPD {informacao_cliente['senha']}, {informacao_cliente['porta_tcp']}, {listar_arquivos()}"
+                mensagem = f"UPD {informacao_cliente['senha']}, {informacao_cliente['porta']}, {listar_arquivos()}"
                 # mensagem = "UPD" 
                 socket_cliente.sendto(mensagem.encode(), endereco_servidor)
                 data, server = socket_cliente.recvfrom(4096)
@@ -106,7 +106,7 @@ def servico_tcp(client):
 def controle_tcp():
     _socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     _socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    _socket.bind(('', informacao_cliente['porta_tcp']))
+    _socket.bind(('', informacao_cliente['porta']))
     _socket.listen(4096)
     while True:
         client, addr = _socket.accept()
