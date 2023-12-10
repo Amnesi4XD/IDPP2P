@@ -6,6 +6,7 @@ BUFFER_SIZE = 1024
 
 # Dicionário para armazenar informações dos clientes
 informacoes_cliente = {}
+lista_arquivos = []
 
 # Função para processar mensagens REG
 def registrar_cliente(mensagem, endereco_cliente):
@@ -31,23 +32,25 @@ def registrar_cliente(mensagem, endereco_cliente):
 
 # Função para processar mensagens UPD
 def atualizar_cliente(mensagem, endereco_cliente):
-    if len(mensagem) != 4:
-        return "ERR INVALID_MESSAGE_FORMAT"
+    # if len(mensagem) != 4:
+    #     return "ERR INVALID_MESSAGE_FORMAT"
 
     senha = mensagem[1]
-    porta = int(mensagem[2])
+    # porta = int(mensagem[2])
+    porta = 123
     arquivos_str = mensagem[3] #Ex: MD51,NOME1;MD52,NOME2;MD53,NOME3;...;MD5N,NOMEN
 
     # Processa a lista de arquivos
-    arquivos_lista = arquivos_str.split(';')
-    arquivos_atualizados = len(arquivos_lista)
+    arquivos_lista_temp = arquivos_str.split(';')
+
+    for arquivo in arquivos_lista_temp:
+        lista_arquivos.append(arquivo)
+    arquivos_atualizados = len(arquivos_lista_temp)
 
     return f"OK {arquivos_atualizados}_REGISTERED_FILES"
 
 # Função para processar mensagens LST
 def listar_arquivos():
-    lista_arquivos = []
-
     # Percorre todos os clientes e seus arquivos
     for endereco_cliente, info_cliente in informacoes_cliente.items():
         for nome_arquivo, hash_arquivo in info_cliente['arquivos'].items():
@@ -69,16 +72,18 @@ def listar_arquivos():
     # Constrói a mensagem de resposta
     resposta = ';'.join([f"{arquivo['hash']},{arquivo['nome']},{','.join(arquivo['localizacoes'])}" for arquivo in lista_arquivos])
     print("Lista de arquivos enviada")
-    resposta = "YES SIRRRRRRRRRRRRRRRRRR"
+    # resposta = "YES SIRRRRRRRRRRRRRRRRRR"
     return resposta
 
 # Função para processar mensagens END
 def desconectar_cliente(mensagem, endereco_cliente):
-    if len(mensagem) != 3:
-        return "ERR INVALID_MESSAGE_FORMAT"
+    # if len(mensagem) != 3:
+    #     return "ERR INVALID_MESSAGE_FORMAT"
 
-    senha = mensagem[1]
-    porta = int(mensagem[2])
+    # senha = mensagem[1]
+    # porta = int(mensagem[2])
+    senha = None
+    porta = None
 
     # Verifica se o cliente está registrado
     if (senha, porta) not in [(info['senha'], info['porta']) for info in informacoes_cliente.values()]:
@@ -94,6 +99,7 @@ def desconectar_cliente(mensagem, endereco_cliente):
 def main():
     print("Servidor iniciado")
     socket_servidor = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    socket_servidor.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     socket_servidor.bind(ENDERECO_SERVIDOR)
 
     while True:
@@ -107,7 +113,7 @@ def main():
         data, endereco_cliente = socket_servidor.recvfrom(BUFFER_SIZE)
         mensagem = data.decode('utf-8').split()
 
-        if not mensagem or len(mensagem) < 0:
+        if not mensagem or len(mensagem) < 0: # 0 para fins de teste
             response = "ERR INVALID_MESSAGE_FORMAT"
         else:
             msg_type = mensagem[0]
@@ -121,6 +127,7 @@ def main():
             elif msg_type == "END":
                 response = desconectar_cliente(mensagem, endereco_cliente)
             else:
+                print(mensagem)
                 response = "ERR INVALID_MESSAGE_FORMAT"
 
         socket_servidor.sendto(response.encode('utf-8'), endereco_cliente)

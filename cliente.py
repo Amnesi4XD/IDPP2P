@@ -21,9 +21,11 @@ def gerar_senha():
 
 def listar_arquivos():
     lista = []
-    for arquivo in os.listdir(informacao_cliente['nome_diretorio']):
-        md5 = md5(open(arquivo, 'rb').read()).hexdigest()
-        elemento_lista = md5 + ',' + arquivo
+    diretorio = informacao_cliente['nome_diretorio']
+    for arquivo in os.listdir(diretorio):
+        caminho_completo = os.path.join(diretorio, arquivo)
+        hash = md5(open(caminho_completo, 'rb').read()).hexdigest()
+        elemento_lista = hash + ',' + arquivo
         lista.append(elemento_lista)
     return lista
 
@@ -72,7 +74,8 @@ def controle_udp(senha, socket_cliente, endereco_servidor):
         opcao = input('Opção: ')
         if opcao == '1':
             try:
-                mensagem = f"UDP {informacao_cliente['senha']}, {informacao_cliente['porta_tcp']}, {listar_arquivos()}"
+                mensagem = f"UPD {informacao_cliente['senha']}, {informacao_cliente['porta_tcp']}, {listar_arquivos()}"
+                # mensagem = "UPD" 
                 socket_cliente.sendto(mensagem.encode(), endereco_servidor)
                 data, server = socket_cliente.recvfrom(4096)
                 print(data.decode('utf-8'))
@@ -90,6 +93,11 @@ def controle_udp(senha, socket_cliente, endereco_servidor):
                 print('Erro ao tentar conectar no servidor')
                 sys.exit(0)
         elif opcao == '3':
+            #enviar END para servidor
+            mensagem = "END"
+            socket_cliente.sendto(mensagem.encode('utf-8'), endereco_servidor)
+            data, server = socket_cliente.recvfrom(4096)
+            print(data.decode('utf-8'))
             socket_cliente.close()
             sys.exit(0)
 
