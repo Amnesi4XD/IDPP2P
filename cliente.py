@@ -31,7 +31,7 @@ def listar_arquivos():
 
 def configurar_ambiente():
     #Pegando porta disponível
-    # porta_tcp = descobre_porta_disponivel()
+    porta_tcp = descobre_porta_disponivel()
     informacao_cliente['porta'] = porta_tcp
     
     #Gerando senha para conexão udp
@@ -49,20 +49,15 @@ def configurar_ambiente():
             sys.exit(0)
 
 def descobre_porta_disponivel():
-    # Define a porta inicial
-    porta_inicial = 31337
-
-    while True:
+    for porta in range(31337, 65535):
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.bind(('localhost', porta_inicial))
-            # Se bem-sucedido, fecha o socket
+            s.bind((informacao_cliente["ip"], porta))
             s.close()
-            # Retorna a porta
-            porta_inicial += 1
-        except socket.error:
-            # Se a porta estiver em uso, tenta a próxima
-            informacao_cliente['porta_tcp'] = porta_inicial
+            return porta
+        except OSError:
+            pass
+    raise Exception("Nenhuma porta disponível encontrada")
 
 def controle_udp(senha, socket_cliente, endereco_servidor):
     while True:
@@ -94,7 +89,8 @@ def controle_udp(senha, socket_cliente, endereco_servidor):
                 sys.exit(0)
         elif opcao == '3':
             #enviar END para servidor
-            mensagem = "END"
+            mensagem = f"END {informacao_cliente['senha']} {informacao_cliente['porta']}"
+            print(mensagem)
             socket_cliente.sendto(mensagem.encode('utf-8'), endereco_servidor)
             data, server = socket_cliente.recvfrom(4096)
             print(data.decode('utf-8'))
@@ -122,9 +118,10 @@ def inicia_controle_tcp():
 def inicia_controle_udp():
     # Inicia a conexão UDP
     socket_cliente = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    
+    print('Cliente iniciado')
     endereco_servidor = ('localhost', 54494)
-    mensagem = f"REG {informacao_cliente['senha']} {informacao_cliente['porta_tcp']} {listar_arquivos()}"
+    mensagem = f"REG {informacao_cliente['senha']} {informacao_cliente['porta']} {listar_arquivos()}"
+    print(mensagem)
     #Retirar após testes
     try:   
         socket_cliente.sendto(mensagem.encode(), endereco_servidor)
@@ -135,7 +132,6 @@ def inicia_controle_udp():
 
 def main():    
     configurar_ambiente()
-    informacao_cliente['porta_tcp'] = 12346
     # start_new_thread(inicia_controle_tcp(), ())
     start_new_thread(inicia_controle_udp(), ())
 

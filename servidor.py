@@ -77,13 +77,12 @@ def listar_arquivos():
 
 # Função para processar mensagens END
 def desconectar_cliente(mensagem, endereco_cliente):
-    # if len(mensagem) != 3:
-    #     return "ERR INVALID_MESSAGE_FORMAT"
+    if len(mensagem) != 3:
+        print(mensagem)
+        return "ERR INVALID_MESSAGE_FORMAT"
 
-    # senha = mensagem[1]
-    # porta = int(mensagem[2])
-    senha = None
-    porta = None
+    senha = mensagem[1]
+    porta = int(mensagem[2])
 
     # Verifica se o cliente está registrado
     if (senha, porta) not in [(info['senha'], info['porta']) for info in informacoes_cliente.values()]:
@@ -102,33 +101,32 @@ def main():
     socket_servidor.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     socket_servidor.bind(ENDERECO_SERVIDOR)
 
+    print("Aguardando conexões...")
     while True:
-        print("Would you like to close the server?")
-        print("(Y/N)")
-        answer = input()
-        if answer.upper() == "Y":
+        try:
+            data, endereco_cliente = socket_servidor.recvfrom(BUFFER_SIZE)
+            mensagem = data.decode('utf-8').split()
+            print(mensagem)
+
+            if not mensagem or len(mensagem) < 0: # 0 para fins de teste
+                response = "ERR INVALID_MESSAGE_FORMAT"
+            else:
+                msg_type = mensagem[0]
+
+                if msg_type == "REG":
+                    response = registrar_cliente(mensagem, endereco_cliente)
+                elif msg_type == "UPD":
+                    response = atualizar_cliente(mensagem, endereco_cliente)
+                elif msg_type == "LST":
+                    response = listar_arquivos()
+                elif msg_type == "END":
+                    response = desconectar_cliente(mensagem, endereco_cliente)
+                else:
+                    print(mensagem)
+                    response = "ERR INVALID_MESSAGE_FORMAT"
+        except KeyboardInterrupt:
             socket_servidor.close()
             break
-        print("Aguardando conexões...")
-        data, endereco_cliente = socket_servidor.recvfrom(BUFFER_SIZE)
-        mensagem = data.decode('utf-8').split()
-
-        if not mensagem or len(mensagem) < 0: # 0 para fins de teste
-            response = "ERR INVALID_MESSAGE_FORMAT"
-        else:
-            msg_type = mensagem[0]
-
-            if msg_type == "REG":
-                response = registrar_cliente(mensagem, endereco_cliente)
-            elif msg_type == "UPD":
-                response = atualizar_cliente(mensagem, endereco_cliente)
-            elif msg_type == "LST":
-                response = listar_arquivos()
-            elif msg_type == "END":
-                response = desconectar_cliente(mensagem, endereco_cliente)
-            else:
-                print(mensagem)
-                response = "ERR INVALID_MESSAGE_FORMAT"
 
         socket_servidor.sendto(response.encode('utf-8'), endereco_cliente)
 
