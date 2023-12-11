@@ -38,16 +38,29 @@ def registrar_cliente(mensagem, endereco_cliente):
 
 # Função para processar mensagens UPD
 def atualizar_cliente(mensagem, endereco_cliente):
-    if len(mensagem) != 4:
+    if len(mensagem) < 4:
         return "ERR INVALID_MESSAGE_FORMAT"
 
     senha = mensagem[1]
     porta = int(mensagem[2])
-    arquivos_str = mensagem[3] #Ex: MD51,NOME1;MD52,NOME2;MD53,NOME3;...;MD5N,NOMEN
+    arquivos_str = mensagem[3]
+
+    # Verifica se o cliente está registrado
+    if (senha, porta) not in [(info['senha'], info['porta']) for info in informacoes_cliente.values()]:
+        return "ERR IP_REGISTERED_WITH_DIFFERENT_PASSWORD"
 
     # Processa a lista de arquivos
     arquivos_lista = arquivos_str.split(';')
-    arquivos_atualizados = len(arquivos_lista)
+    arquivos_atualizados = 0
+
+    # Atualiza a lista de arquivos do cliente
+    for info_arquivo in arquivos_lista:
+        partes_arquivo = info_arquivo.split(',')
+        if len(partes_arquivo) == 2:
+            hash_arquivo, nome_arquivo = partes_arquivo[0], partes_arquivo[1]
+            # Atualiza o arquivo no cliente
+            informacoes_cliente[endereco_cliente]['arquivos'][nome_arquivo] = hash_arquivo
+            arquivos_atualizados += 1
 
     return f"OK {arquivos_atualizados}_REGISTERED_FILES"
 
