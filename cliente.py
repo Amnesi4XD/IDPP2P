@@ -56,6 +56,17 @@ def descobre_porta_disponivel():
     raise Exception("Nenhuma porta disponível encontrada")
 
 def controle_udp(socket_cliente, endereco_servidor):
+    # Inicia a conexão UDP
+    socket_cliente = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    
+    endereco_servidor = ('localhost', 54494)
+    
+    #Retirar após testes
+    try:   
+        socket_cliente.sendto(f"REG {informacao_cliente['senha']} {informacao_cliente['porta']} {listar_arquivos()}", endereco_servidor)
+    except:
+        print('Erro ao tentar conectar no servidor')
+        sys.exit(0)
     while True:
         #cria interfaçe para o usúario poder selecionar se ele quer listar arquivos disponíveis, baixar um arquivo ou sair do programa
         print('Selecione uma opção:')
@@ -65,7 +76,7 @@ def controle_udp(socket_cliente, endereco_servidor):
         opcao = input('Opção: ')
         if opcao == '1':
             try:
-                mensagem = f"UDP {informacao_cliente['senha']}, {informacao_cliente['porta_tcp']}, {listar_arquivos()}"
+                mensagem = f"UDP {informacao_cliente['senha']}, {informacao_cliente['porta']}, {listar_arquivos()}"
                 socket_cliente.sendto(mensagem.encode(), endereco_servidor)
                 data, server = socket_cliente.recvfrom(4096)
                 print(data.decode('utf-8'))
@@ -101,7 +112,7 @@ def servico_tcp(client):
 def controle_tcp():
     _socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     _socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    _socket.bind(('', informacao_cliente['porta_tcp']))
+    _socket.bind(('', informacao_cliente['porta']))
     _socket.listen(4096)
     while True:
         client, addr = _socket.accept()
@@ -111,17 +122,6 @@ def inicia_controle_tcp():
     controle_tcp()
 
 def inicia_controle_udp():
-    # Inicia a conexão UDP
-    socket_cliente = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    
-    endereco_servidor = ('localhost', 54494)
-    
-    #Retirar após testes
-    try:   
-        socket_cliente.sendto(f"REG {informacao_cliente['senha']} {porta_tcp} {listar_arquivos()}", endereco_servidor)
-    except:
-        print('Erro ao tentar conectar no servidor')
-        sys.exit(0)
     controle_udp()
 
 def main():    
