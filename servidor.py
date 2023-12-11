@@ -9,12 +9,12 @@ informacoes_cliente = {}
 
 # Função para processar mensagens REG
 def registrar_cliente(mensagem, endereco_cliente):
-    if len(mensagem) != 4:
+    if len(mensagem) < 4:
         return "ERR INVALID_MESSAGE_FORMAT"
 
     senha = mensagem[1]
     porta = int(mensagem[2])
-    str_arquivos = mensagem[3] #Ex: MD51,NOME1;MD52,NOME2;MD53,NOME3;...;MD5N,NOMEN
+    str_arquivos = mensagem[3]
 
     # Verifica se o cliente já está registrado
     if (senha, porta) in informacoes_cliente:
@@ -22,25 +22,45 @@ def registrar_cliente(mensagem, endereco_cliente):
 
     # Processa a lista de arquivos
     lista_arquivos = str_arquivos.split(';')
-    arquivos_compartilhados = lista_arquivos.count 
-    
+    arquivos_compartilhados = 0
 
-
+    for info_arquivo in lista_arquivos:
+        partes_mensagem_arquivo = info_arquivo.split(',')
+        if len(partes_mensagem_arquivo) == 2:
+            hash_arquivo, nome_arquivo = partes_mensagem_arquivo[0], partes_mensagem_arquivo[1]
+            # Adiciona o arquivo ao cliente
+            if endereco_cliente not in informacoes_cliente:
+                informacoes_cliente[endereco_cliente] = {'senha': senha, 'porta': porta, 'arquivos': {}}
+            informacoes_cliente[endereco_cliente]['arquivos'][nome_arquivo] = hash_arquivo
+            arquivos_compartilhados += 1
 
     return f"OK {arquivos_compartilhados}_REGISTERED_FILES"
 
 # Função para processar mensagens UPD
 def atualizar_cliente(mensagem, endereco_cliente):
-    if len(mensagem) != 4:
+    if len(mensagem) < 4:
         return "ERR INVALID_MESSAGE_FORMAT"
 
     senha = mensagem[1]
     porta = int(mensagem[2])
-    arquivos_str = mensagem[3] #Ex: MD51,NOME1;MD52,NOME2;MD53,NOME3;...;MD5N,NOMEN
+    arquivos_str = mensagem[3]
+
+    # Verifica se o cliente está registrado
+    if (senha, porta) not in [(info['senha'], info['porta']) for info in informacoes_cliente.values()]:
+        return "ERR IP_REGISTERED_WITH_DIFFERENT_PASSWORD"
 
     # Processa a lista de arquivos
     arquivos_lista = arquivos_str.split(';')
-    arquivos_atualizados = len(arquivos_lista)
+    arquivos_atualizados = 0
+
+    # Atualiza a lista de arquivos do cliente
+    for info_arquivo in arquivos_lista:
+        partes_arquivo = info_arquivo.split(',')
+        if len(partes_arquivo) == 2:
+            hash_arquivo, nome_arquivo = partes_arquivo[0], partes_arquivo[1]
+            # Atualiza o arquivo no cliente
+            informacoes_cliente[endereco_cliente]['arquivos'][nome_arquivo] = hash_arquivo
+            arquivos_atualizados += 1
 
     return f"OK {arquivos_atualizados}_REGISTERED_FILES"
 
@@ -91,30 +111,37 @@ def desconectar_cliente(mensagem, endereco_cliente):
 
 # Função principal do servidor
 def main():
+    print("Servidor iniciado")
     socket_servidor = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    socket_servidor.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     socket_servidor.bind(ENDERECO_SERVIDOR)
 
-    print("Servidor iniciado. Aguardando conexões.")
-
+    print("Aguardando conexões...")
     while True:
-        data, endereco_cliente = socket_servidor.recvfrom(BUFFER_SIZE)
-        mensagem = data.decode('utf-8').split()
+        try:
+            data, endereco_cliente = socket_servidor.recvfrom(BUFFER_SIZE)
+            mensagem = data.decode('utf-8').split()
+            print(mensagem)
 
-        if not mensagem or len(mensagem) < 2:
-            response = "ERR INVALID_MESSAGE_FORMAT"
-        else:
-            msg_type = mensagem[0]
-
-            if msg_type == "REG":
-                response = registrar_cliente(mensagem, endereco_cliente)
-            elif msg_type == "UPD":
-                response = atualizar_cliente(mensagem, endereco_cliente)
-            elif msg_type == "LST":
-                response = listar_arquivos()
-            elif msg_type == "END":
-                response = desconectar_cliente(mensagem, endereco_cliente)
-            else:
+            if not mensagem or len(mensagem) < 0: # 0 para fins de teste
                 response = "ERR INVALID_MESSAGE_FORMAT"
+            else:
+                msg_type = mensagem[0]
+
+                if msg_type == "REG":
+                    response = registrar_cliente(mensagem, endereco_cliente)
+                elif msg_type == "UPD":
+                    response = atualizar_cliente(mensagem, endereco_cliente)
+                elif msg_type == "LST":
+                    response = listar_arquivos()
+                elif msg_type == "END":
+                    response = desconectar_cliente(mensagem, endereco_cliente)
+                else:
+                    print(mensagem)
+                    response = "ERR INVALID_MESSAGE_FORMAT"
+        except KeyboardInterrupt:
+            socket_servidor.close()
+            break
 
         socket_servidor.sendto(response.encode('utf-8'), endereco_cliente)
 

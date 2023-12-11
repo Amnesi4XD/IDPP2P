@@ -9,8 +9,6 @@ from _thread import *
 import os
 from hashlib import md5
 
-porta_tcp = None
-
 informacao_cliente = {}
 
 def gerar_senha():
@@ -47,22 +45,17 @@ def configurar_ambiente():
             sys.exit(0)
 
 def descobre_porta_disponivel():
-    # Define a porta inicial
-    porta_inicial = 31337
-
-    while True:
+    for porta in range(31337, 65535):
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.bind(('localhost', porta_inicial))
-            # Se bem-sucedido, fecha o socket
+            s.bind((informacao_cliente["ip"], porta))
             s.close()
-            # Retorna a porta
-            porta_inicial += 1
-        except socket.error:
-            # Se a porta estiver em uso, tenta a próxima
-            informacao_cliente['porta_tcp'] = porta_inicial
+            return porta
+        except OSError:
+            pass
+    raise Exception("Nenhuma porta disponível encontrada")
 
-def controle_udp(senha, socket_cliente, endereco_servidor):
+def controle_udp(socket_cliente, endereco_servidor):
     while True:
         #cria interfaçe para o usúario poder selecionar se ele quer listar arquivos disponíveis, baixar um arquivo ou sair do programa
         print('Selecione uma opção:')
@@ -79,6 +72,25 @@ def controle_udp(senha, socket_cliente, endereco_servidor):
             except:
                 print('Erro ao tentar conectar no servidor')
                 sys.exit(0)
+        elif opcao == '2':
+            #enviar LST para servidor
+            try:
+                mensagem = "LST"
+                socket_cliente.sendto(mensagem.encode('utf-8'), endereco_servidor)
+                data, _ = socket_cliente.recvfrom(4096)
+                print(data.decode('utf-8'))
+            except:
+                print('Erro ao tentar conectar no servidor')
+                sys.exit(0)
+        elif opcao == '3':
+            #enviar END para servidor
+            mensagem = f"END {informacao_cliente['senha']} {informacao_cliente['porta']}"
+            print(mensagem)
+            socket_cliente.sendto(mensagem.encode('utf-8'), endereco_servidor)
+            data, _ = socket_cliente.recvfrom(4096)
+            print(data.decode('utf-8'))
+            socket_cliente.close()
+            sys.exit(0)
 
 def servico_tcp(client):
     # Código do serviço TCP
@@ -123,7 +135,7 @@ def main():
         print('Cliente em execução')
 
 if __name__ == '__main__':
-    if len(sys.argv) == 2:
+    if len(sys.argv) == 3:
         informacao_cliente['ip'] = sys.argv[1]
         informacao_cliente['nome_diretorio'] = sys.argv[2]
         main()
