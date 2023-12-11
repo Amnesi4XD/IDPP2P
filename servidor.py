@@ -13,7 +13,7 @@ def registrar_cliente(mensagem, endereco_cliente):
         return "ERR INVALID_MESSAGE_FORMAT"
 
     senha = mensagem[1]
-    porta = int(mensagem[2])
+    porta = mensagem[2]
     str_arquivos = mensagem[3]
 
     # Verifica se o cliente já está registrado
@@ -33,7 +33,7 @@ def registrar_cliente(mensagem, endereco_cliente):
                 informacoes_cliente[endereco_cliente] = {'senha': senha, 'porta': porta, 'arquivos': {}}
             informacoes_cliente[endereco_cliente]['arquivos'][nome_arquivo] = hash_arquivo
             arquivos_compartilhados += 1
-
+        
     return f"OK {arquivos_compartilhados}_REGISTERED_FILES"
 
 # Função para processar mensagens UPD
@@ -42,7 +42,7 @@ def atualizar_cliente(mensagem, endereco_cliente):
         return "ERR INVALID_MESSAGE_FORMAT"
 
     senha = mensagem[1]
-    porta = int(mensagem[2])
+    porta = mensagem[2]
     arquivos_str = mensagem[3]
 
     # Verifica se o cliente está registrado
@@ -97,7 +97,7 @@ def desconectar_cliente(mensagem, endereco_cliente):
         return "ERR INVALID_MESSAGE_FORMAT"
 
     senha = mensagem[1]
-    porta = int(mensagem[2])
+    porta = mensagem[2]
 
     # Verifica se o cliente está registrado
     if (senha, porta) not in [(info['senha'], info['porta']) for info in informacoes_cliente.values()]:

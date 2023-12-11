@@ -49,7 +49,7 @@ def configurar_ambiente():
     if  not os.path.isdir(informacao_cliente['nome_diretorio']):
         print('Diretorio para salvar arquivos não existe, gostaria de criar diretório com esse nome?')    
         resposta = input('S/N: ')
-        if resposta == 'S':
+        if resposta.upper() == 'S':
             os.mkdir(informacao_cliente['nome_diretorio'])
         else:
             print('Encerrando serviço')
@@ -57,18 +57,17 @@ def configurar_ambiente():
 
 
 
-def controle_udp(socket_cliente, endereco_servidor):
+def controle_udp():
     # Inicia a conexão UDP
     socket_cliente = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     
     endereco_servidor = ('localhost', 54494)
     
-    #Retirar após testes
-    try:   
-        socket_cliente.sendto(f"REG {informacao_cliente['senha']} {informacao_cliente['porta']} {listar_arquivos()}", endereco_servidor)
-    except:
-        print('Erro ao tentar conectar no servidor')
-        sys.exit(0)
+    mensagem = f"REG {informacao_cliente['senha']} {informacao_cliente['porta']} {listar_arquivos()}"
+    socket_cliente.sendto(mensagem.encode(), endereco_servidor)
+    resposta, _ = socket_cliente.recvfrom(4096)
+    print(resposta.decode('utf-8'))
+    
     while True:
         #cria interfaçe para o usúario poder selecionar se ele quer listar arquivos disponíveis, baixar um arquivo ou sair do programa
         print('Selecione uma opção:')
@@ -78,9 +77,9 @@ def controle_udp(socket_cliente, endereco_servidor):
         opcao = input('Opção: ')
         if opcao == '1':
             try:
-                mensagem = f"UDP {informacao_cliente['senha']}, {informacao_cliente['porta']}, {listar_arquivos()}"
+                mensagem = f"UPD {informacao_cliente['senha']} {informacao_cliente['porta']} {listar_arquivos()}"
                 socket_cliente.sendto(mensagem.encode(), endereco_servidor)
-                data, server = socket_cliente.recvfrom(4096)
+                data, _ = socket_cliente.recvfrom(4096)
                 print(data.decode('utf-8'))
             except:
                 print('Erro ao tentar conectar no servidor')
@@ -129,7 +128,7 @@ def inicia_controle_udp():
 def main():    
     configurar_ambiente()
     
-    start_new_thread(inicia_controle_tcp(), ())
+    #start_new_thread(inicia_controle_tcp(), ())
     start_new_thread(inicia_controle_udp(), ())
 
     while True:
