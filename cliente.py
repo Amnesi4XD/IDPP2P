@@ -25,6 +25,17 @@ def listar_arquivos():
         lista.append(elemento_lista)
     return lista
 
+def descobre_porta_disponivel():
+    for porta in range(31337, 65535):
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.bind((informacao_cliente["ip"], porta))
+            s.close()
+            return porta
+        except OSError:
+            pass
+    raise Exception("Nenhuma porta disponível encontrada")
+
 def configurar_ambiente():
     #Pegando porta disponível
     porta_tcp = descobre_porta_disponivel()
@@ -44,16 +55,7 @@ def configurar_ambiente():
             print('Encerrando serviço')
             sys.exit(0)
 
-def descobre_porta_disponivel():
-    for porta in range(31337, 65535):
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.bind((informacao_cliente["ip"], porta))
-            s.close()
-            return porta
-        except OSError:
-            pass
-    raise Exception("Nenhuma porta disponível encontrada")
+
 
 def controle_udp(socket_cliente, endereco_servidor):
     # Inicia a conexão UDP
