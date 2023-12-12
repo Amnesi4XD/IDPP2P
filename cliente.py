@@ -19,21 +19,39 @@ def gerar_senha():
 
 def listar_arquivos():
     lista = []
-    for arquivo in os.listdir(informacao_cliente['nome_diretorio']):
-        md5 = md5(open(arquivo, 'rb').read()).hexdigest()
-        elemento_lista = md5 + ',' + arquivo
-        lista.append(elemento_lista)
-    return lista
+    diretorio = informacao_cliente['nome_diretorio']
+
+    for arquivo_nome in os.listdir(diretorio):
+        caminho_arquivo = os.path.join(diretorio, arquivo_nome)
+
+        if os.path.isfile(caminho_arquivo):  # Certifica-se de que é um arquivo, não um diretório
+            with open(caminho_arquivo, 'rb') as arquivo:
+                md5_arquivo = md5(arquivo.read()).hexdigest()
+                elemento_lista = f"{md5_arquivo},{arquivo_nome}"
+                lista.append(elemento_lista)
+
+    # Junte os elementos da lista em uma única string
+    if len(lista) == 0:
+        return ' '
+    lista_str = ', '.join(lista)
+    return lista_str
+
+
+def porta_disponivel(porta):
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.connect(('127.0.0.1', porta))
+        return False  # Conexão bem-sucedida, a porta está em uso
+    except ConnectionRefusedError:
+        return True   # Conexão recusada, a porta está disponível
+    finally:
+        sock.close()
 
 def descobre_porta_disponivel():
     for porta in range(31337, 65535):
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.bind((informacao_cliente["ip"], porta))
-            s.close()
+        if porta_disponivel(porta):
             return porta
-        except OSError:
-            pass
+
     raise Exception("Nenhuma porta disponível encontrada")
 
 def configurar_ambiente():
@@ -55,7 +73,56 @@ def configurar_ambiente():
             print('Encerrando serviço')
             sys.exit(0)
 
+def envia_recebe_udp(mensagem, endereco_servidor, socket_cliente):
+    socket_cliente.sendto(mensagem.encode('utf-8'), endereco_servidor)
+    print(f'\nMensagem enviada: {mensagem}\n')
+    data, _ = socket_cliente.recvfrom(4096)
+    resposta = data.decode('utf-8')
+    print(f'\nMensagem recebida: {resposta}\n')
+    return resposta
 
+def menu_selecionar_arquivo(lista_arquivos):
+    arquivos = lista_arquivos.split(';')
+    print('Selecione um arquivo que deseja baixar:')
+    for i, arquivo_info in enumerate(arquivos):
+        md5, nome, _ = arquivo_info.split(',')
+        print(f'{i+1} - Nome: {nome}, Hash: {md5}')
+
+    opcao = int(input('\nOpção: '))
+    arquivo_selecionado = arquivos[opcao - 1]
+    return arquivo_selecionado
+
+def menu_selecionar_host(arquivo_selecionado):
+    hash , nome, *hosts = arquivo_selecionado.split(',')
+    
+    print(f'\nSelecione um host para baixar o arquivo "{nome}":')
+    for i, host_info in enumerate(hosts):
+        ip, porta = host_info.split(':')
+        print(f'{i+1} - IP: {ip}, Porta: {porta}')
+
+    opcao = int(input('\nOpção: '))
+    host_selecionado = hosts[opcao - 1]
+    print(f'\nVocê selecionou o arquivo "{nome}" do host "{host_selecionado}" para download.')
+    ip, porta = host_selecionado.split(':')
+    return ip, porta, hash, nome
+
+def requisita_arquivo(ip, porta, hash, nome):
+    try:
+        socket_cliente = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        socket_cliente.connect((ip, int(porta)))
+        mensagem = f"GET {hash}"
+        socket_cliente.send(mensagem.encode('utf-8'))
+
+        with open(os.path.join(informacao_cliente['nome_diretorio'], nome), 'wb') as arquivo:
+            while True:
+                data = socket_cliente.recv(4096)
+                if not data:
+                    break
+                arquivo.write(data)
+    except Exception as e:
+        print(f"\nErro ao requisitar o arquivo: {nome}")
+    finally:
+        socket_cliente.close()
 
 def controle_udp():
     # Inicia a conexão UDP
@@ -64,9 +131,7 @@ def controle_udp():
     endereco_servidor = ('localhost', 54494)
     
     mensagem = f"REG {informacao_cliente['senha']} {informacao_cliente['porta']} {listar_arquivos()}"
-    socket_cliente.sendto(mensagem.encode(), endereco_servidor)
-    resposta, _ = socket_cliente.recvfrom(4096)
-    print(resposta.decode('utf-8'))
+    envia_recebe_udp(mensagem, endereco_servidor, socket_cliente)
     
     while True:
         #cria interfaçe para o usúario poder selecionar se ele quer listar arquivos disponíveis, baixar um arquivo ou sair do programa
@@ -78,9 +143,7 @@ def controle_udp():
         if opcao == '1':
             try:
                 mensagem = f"UPD {informacao_cliente['senha']} {informacao_cliente['porta']} {listar_arquivos()}"
-                socket_cliente.sendto(mensagem.encode(), endereco_servidor)
-                data, _ = socket_cliente.recvfrom(4096)
-                print(data.decode('utf-8'))
+                envia_recebe_udp(mensagem, endereco_servidor, socket_cliente)
             except:
                 print('Erro ao tentar conectar no servidor')
                 sys.exit(0)
@@ -88,32 +151,59 @@ def controle_udp():
             #enviar LST para servidor
             try:
                 mensagem = "LST"
-                socket_cliente.sendto(mensagem.encode('utf-8'), endereco_servidor)
-                data, _ = socket_cliente.recvfrom(4096)
-                print(data.decode('utf-8'))
+                resposta = envia_recebe_udp(mensagem, endereco_servidor, socket_cliente)
+                info_arquivo = menu_selecionar_arquivo(resposta)
+                ip, porta, hash, nome = menu_selecionar_host(info_arquivo)
+                requisita_arquivo(ip, porta, hash, nome)
+                mensagem = f"UPD {informacao_cliente['senha']} {informacao_cliente['porta']} {listar_arquivos()}"
+                envia_recebe_udp(mensagem, endereco_servidor, socket_cliente)
             except:
                 print('Erro ao tentar conectar no servidor')
                 sys.exit(0)
         elif opcao == '3':
             #enviar END para servidor
             mensagem = f"END {informacao_cliente['senha']} {informacao_cliente['porta']}"
-            print(mensagem)
-            socket_cliente.sendto(mensagem.encode('utf-8'), endereco_servidor)
-            data, _ = socket_cliente.recvfrom(4096)
-            print(data.decode('utf-8'))
+            envia_recebe_udp(mensagem, endereco_servidor, socket_cliente)
             socket_cliente.close()
             sys.exit(0)
 
 def servico_tcp(client):
-    # Código do serviço TCP
-    print('Nova conexao TCP')
-    client.send(b'OI')
-    client.close()
+    try:
+        mensagem = client.recv(4096).decode('utf-8')
+        print(f'\nMensagem recebida: {mensagem}\n')
+        
+        if mensagem.startswith("GET "):
+            _, hash_arquivo = mensagem.split(" ")
+            diretorio = informacao_cliente['nome_diretorio']
+
+            for arquivo_nome in os.listdir(diretorio):
+                caminho_arquivo = os.path.join(diretorio, arquivo_nome)
+
+                if os.path.isfile(caminho_arquivo):
+                    with open(caminho_arquivo, 'rb') as arquivo:
+                        md5_arquivo = md5(arquivo.read()).hexdigest()
+
+                        if md5_arquivo == hash_arquivo:
+                            # Envia o arquivo para o cliente
+                            with open(caminho_arquivo, 'rb') as arquivo_enviar:
+                                dados = arquivo_enviar.read()
+                                client.sendall(dados)
+                            break
+            else:
+                client.sendall('Arquivo não encontrado')
+        else:
+            client.sendall('Mensagem inválida')
+
+    except Exception as e:
+        print(f"Erro no serviço TCP: {e}")
+
+    finally:
+        client.close()
 
 def controle_tcp():
     _socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     _socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    _socket.bind(('', informacao_cliente['porta']))
+    _socket.bind((informacao_cliente['ip'], informacao_cliente['porta']))
     _socket.listen(4096)
     while True:
         client, addr = _socket.accept()

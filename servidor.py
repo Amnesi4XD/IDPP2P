@@ -14,20 +14,17 @@ def registrar_cliente(mensagem, endereco_cliente):
 
     senha = mensagem[1]
     porta = mensagem[2]
-    str_arquivos = mensagem[3]
+    lista_arquivos = mensagem[3:]
 
-    # Verifica se o cliente já está registrado
-    if (senha, porta) in informacoes_cliente:
-        return "ERR CLIENT_ALREADY_REGISTERED"
-
-    # Processa a lista de arquivos
-    lista_arquivos = str_arquivos.split(';')
     arquivos_compartilhados = 0
 
     for info_arquivo in lista_arquivos:
+        # Remova espaços em branco e caracteres de vírgula adicionais
+        info_arquivo = info_arquivo.strip(', ')
+        
         partes_mensagem_arquivo = info_arquivo.split(',')
         if len(partes_mensagem_arquivo) == 2:
-            hash_arquivo, nome_arquivo = partes_mensagem_arquivo[0], partes_mensagem_arquivo[1]
+            hash_arquivo, nome_arquivo = partes_mensagem_arquivo
             # Adiciona o arquivo ao cliente
             if endereco_cliente not in informacoes_cliente:
                 informacoes_cliente[endereco_cliente] = {'senha': senha, 'porta': porta, 'arquivos': {}}
@@ -43,22 +40,24 @@ def atualizar_cliente(mensagem, endereco_cliente):
 
     senha = mensagem[1]
     porta = mensagem[2]
-    arquivos_str = mensagem[3]
+    lista_arquivos = mensagem[3:]
 
     # Verifica se o cliente está registrado
     if (senha, porta) not in [(info['senha'], info['porta']) for info in informacoes_cliente.values()]:
         return "ERR IP_REGISTERED_WITH_DIFFERENT_PASSWORD"
 
-    # Processa a lista de arquivos
-    arquivos_lista = arquivos_str.split(';')
     arquivos_atualizados = 0
-
-    # Atualiza a lista de arquivos do cliente
-    for info_arquivo in arquivos_lista:
-        partes_arquivo = info_arquivo.split(',')
-        if len(partes_arquivo) == 2:
-            hash_arquivo, nome_arquivo = partes_arquivo[0], partes_arquivo[1]
-            # Atualiza o arquivo no cliente
+    
+    for info_arquivo in lista_arquivos:
+        # Remova espaços em branco e caracteres de vírgula adicionais
+        info_arquivo = info_arquivo.strip(', ')
+        
+        partes_mensagem_arquivo = info_arquivo.split(',')
+        if len(partes_mensagem_arquivo) == 2:
+            hash_arquivo, nome_arquivo = partes_mensagem_arquivo
+            # Adiciona o arquivo ao cliente
+            if endereco_cliente not in informacoes_cliente:
+                informacoes_cliente[endereco_cliente] = {'senha': senha, 'porta': porta, 'arquivos': {}}
             informacoes_cliente[endereco_cliente]['arquivos'][nome_arquivo] = hash_arquivo
             arquivos_atualizados += 1
 
@@ -116,12 +115,12 @@ def main():
     socket_servidor.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     socket_servidor.bind(ENDERECO_SERVIDOR)
 
-    print("Aguardando conexões...")
+    print("Aguardando conexões...\n\n")
     while True:
         try:
             data, endereco_cliente = socket_servidor.recvfrom(BUFFER_SIZE)
             mensagem = data.decode('utf-8').split()
-            print(mensagem)
+            print(f"mensagem recebida pelo servidor: {mensagem}\n\n")
 
             if not mensagem or len(mensagem) < 0: # 0 para fins de teste
                 response = "ERR INVALID_MESSAGE_FORMAT"
@@ -144,6 +143,6 @@ def main():
             break
 
         socket_servidor.sendto(response.encode('utf-8'), endereco_cliente)
-
+        print(f"\n\nmensagem enviada pelo servidor: {response}")
 if __name__ == "__main__":
     main()
