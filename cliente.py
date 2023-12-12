@@ -13,6 +13,7 @@ informacao_cliente = {}
 
 encerra_tcp = False
 
+#Função para gerar senha da conexão com o servidor udp
 def gerar_senha():
     print("Deseja informar uma senha para conexão ou cria-la automaticamente?")
     opcao = input("S/N: ")
@@ -26,6 +27,7 @@ def gerar_senha():
         print("Senha gerada automaticamente: " + senha)
         return senha
 
+#Função para gerar string com arquivos do diretório
 def string_arquivos():
     lista = []
     diretorio = informacao_cliente['nome_diretorio']
@@ -43,7 +45,7 @@ def string_arquivos():
     str_lista = ';'.join(lista)
     return str_lista
 
-
+#Função para verificar se a porta está disponível
 def porta_disponivel(porta):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
@@ -53,7 +55,8 @@ def porta_disponivel(porta):
         return False # Vinculação falhou, a porta não está disponível
     finally:
         sock.close()
-
+        
+#Função para descobrir porta disponível
 def descobre_porta_disponivel():
     for porta in range(31337, 65535):
         if porta_disponivel(porta):
@@ -61,6 +64,7 @@ def descobre_porta_disponivel():
 
     raise Exception("Nenhuma porta disponível encontrada")
 
+#Função para configurar ambiente do cliente
 def configurar_ambiente():    
     #Gerando senha para conexão udp
     senha = gerar_senha()
@@ -76,6 +80,7 @@ def configurar_ambiente():
             print('Encerrando serviço')
             sys.exit(0)
 
+#Função para enviar e receber mensagens udp
 def envia_recebe_udp(mensagem, endereco_servidor, socket_cliente):
     try:
         socket_cliente.sendto(mensagem.encode('utf-8'), endereco_servidor)
@@ -123,6 +128,7 @@ def menu_selecionar_arquivo(str_arquivos):
         else:
             print('Opção inválida. Tente novamente.')
 
+# Cria menu interativo para cliente selecionar host que deseja baixar o arquivo
 def menu_selecionar_host(arquivo_selecionado):
     nome , md5, *hosts = arquivo_selecionado.split(',')
     print(f'\nSelecione um host para baixar o arquivo "{nome}":')
@@ -141,6 +147,7 @@ def menu_selecionar_host(arquivo_selecionado):
     else:
         print('Opção inválida.')
 
+#Função para requisitar arquivo
 def requisita_arquivo(ip, porta, hash, nome):
     try:
         socket_cliente = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -148,7 +155,6 @@ def requisita_arquivo(ip, porta, hash, nome):
         mensagem = f"GET {hash}"
         socket_cliente.send(mensagem.encode('utf-8'))
         print(f'\nMensagem enviada: {mensagem}\n')
-
         with open(os.path.join(informacao_cliente['nome_diretorio'], nome), 'wb') as arquivo:
             while True:
                 data = socket_cliente.recv(4096)
@@ -164,7 +170,8 @@ def requisita_arquivo(ip, porta, hash, nome):
         print('3 - Sair')
         print('Opção:')
         socket_cliente.close()
-        
+
+#Função para enviar e receber mensagens udp
 def envia_recebe_udp(mensagem, endereco_servidor, socket_cliente):
     try:
         socket_cliente.sendto(mensagem.encode('utf-8'), endereco_servidor)
@@ -176,6 +183,7 @@ def envia_recebe_udp(mensagem, endereco_servidor, socket_cliente):
     except:
         print(f'Erro ao tentar se comunicar com o servidor\n')
 
+#Função para controle udp
 def controle_udp():
     global encerra_tcp
     # Inicia a conexão UDP
@@ -224,6 +232,8 @@ def controle_udp():
             socket_cliente.close()
             sys.exit(0)
 
+
+#Função para controle tcp
 def servico_tcp(client):
     try:
         mensagem = client.recv(4096).decode('utf-8')
