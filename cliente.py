@@ -194,7 +194,7 @@ def controle_udp():
                 continue
             ip, porta, hash, nome = menu_selecionar_host(info_arquivo)
             requisita_arquivo(ip, porta, hash, nome)
-            str_arquivos = string_arquivos
+            str_arquivos = string_arquivos()
             mensagem = f"UPD {informacao_cliente['senha']} {informacao_cliente['porta']} {str_arquivos}"
             envia_recebe_udp(mensagem, endereco_servidor, socket_cliente)
         elif opcao == '3':
