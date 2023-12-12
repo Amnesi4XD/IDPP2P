@@ -9,11 +9,16 @@ informacoes_cliente = {}
 
 # Função para processar mensagens REG
 def registrar_cliente(mensagem, endereco_cliente):
-    if len(mensagem) < 4:
+    if len(mensagem) < 3:
         return "ERR INVALID_MESSAGE_FORMAT"
 
     senha = mensagem[1]
     porta = mensagem[2]
+    if len(mensagem) == 3:
+        lista_arquivos = []
+        informacoes_cliente[endereco_cliente] = {'senha': senha, 'porta': porta, 'arquivos': {}}
+        informacoes_cliente[endereco_cliente]['arquivos'] = {}
+        return "OK 0_REGISTERED_FILES"
     lista_arquivos = mensagem[3:]
 
     arquivos_compartilhados = 0

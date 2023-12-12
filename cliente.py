@@ -17,7 +17,7 @@ def gerar_senha():
     senha = ''.join(secrets.choice(caracteres) for _ in range(tamanho))
     return senha
 
-def listar_arquivos():
+def string_arquivos():
     lista = []
     diretorio = informacao_cliente['nome_diretorio']
 
@@ -31,10 +31,8 @@ def listar_arquivos():
                 lista.append(elemento_lista)
 
     # Junte os elementos da lista em uma única string
-    if len(lista) == 0:
-        return ' '
-    lista_str = ', '.join(lista)
-    return lista_str
+    str_lista = ';'.join(lista)
+    return str_lista
 
 
 def porta_disponivel(porta):
@@ -74,37 +72,61 @@ def configurar_ambiente():
             sys.exit(0)
 
 def envia_recebe_udp(mensagem, endereco_servidor, socket_cliente):
-    socket_cliente.sendto(mensagem.encode('utf-8'), endereco_servidor)
-    print(f'\nMensagem enviada: {mensagem}\n')
-    data, _ = socket_cliente.recvfrom(4096)
-    resposta = data.decode('utf-8')
-    print(f'\nMensagem recebida: {resposta}\n')
-    return resposta
+    try:
+        socket_cliente.sendto(mensagem.encode('utf-8'), endereco_servidor)
+        print(f'\nMensagem enviada: {mensagem}\n')
+        data, _ = socket_cliente.recvfrom(4096)
+        resposta = data.decode('utf-8')
+        print(f'\nMensagem recebida: {resposta}\n')
+        return resposta
+    except:
+        print(f'Erro ao tentar se comunicar com o servidor\n')
 
-def menu_selecionar_arquivo(lista_arquivos):
-    arquivos = lista_arquivos.split(';')
+# Cria menu interativo para cliente selecionar arquivo que deseja baixar
+def menu_selecionar_arquivo(str_arquivos):
+    if not str_arquivos:
+        print('Não há arquivos disponíveis para download.')
+        return None
+
+    # Transforma a string em uma lista de arquivos
+    arquivos_lista = str_arquivos.split(';')
+
     print('Selecione um arquivo que deseja baixar:')
-    for i, arquivo_info in enumerate(arquivos):
-        md5, nome, _ = arquivo_info.split(',')
-        print(f'{i+1} - Nome: {nome}, Hash: {md5}')
+    for i, arquivo_info in enumerate(arquivos_lista):
+        md5, nome, *hosts = arquivo_info.split(',')
+        
+        # Verifica se o IP e a porta do cliente estão na lista de hosts do arquivo
+        if (str(informacao_cliente['ip']) + ':' + str((informacao_cliente['porta']))) not in hosts:
+            print(f'{i + 1} - Nome: {nome}, Hash: {md5}')
 
     opcao = int(input('\nOpção: '))
-    arquivo_selecionado = arquivos[opcao - 1]
-    return arquivo_selecionado
+
+    # Verifica se a opção selecionada está dentro do índice da arquivos_lista
+    if 1 <= opcao <= len(arquivos_lista):
+        arquivo_selecionado = arquivos_lista[opcao - 1]
+        return arquivo_selecionado
+    else:
+        print('Opção inválida.')
+        return None
+
 
 def menu_selecionar_host(arquivo_selecionado):
-    hash , nome, *hosts = arquivo_selecionado.split(',')
-    
+    md5 , nome, *hosts = arquivo_selecionado.split(',')
     print(f'\nSelecione um host para baixar o arquivo "{nome}":')
     for i, host_info in enumerate(hosts):
         ip, porta = host_info.split(':')
         print(f'{i+1} - IP: {ip}, Porta: {porta}')
 
     opcao = int(input('\nOpção: '))
-    host_selecionado = hosts[opcao - 1]
-    print(f'\nVocê selecionou o arquivo "{nome}" do host "{host_selecionado}" para download.')
-    ip, porta = host_selecionado.split(':')
-    return ip, porta, hash, nome
+
+#Verifica se a opção selecionada esta dentro do índice de hosts
+    if 1<= opcao <= len(hosts):
+        host_selecionado = hosts[opcao - 1]
+        print(f'\nVocê selecionou o arquivo "{nome}" do host "{host_selecionado}" para download.')
+        ip, porta = host_selecionado.split(':')
+        return ip, porta, md5, nome
+    else:
+        print('Opção inválida.')
 
 def requisita_arquivo(ip, porta, hash, nome):
     try:
@@ -112,10 +134,12 @@ def requisita_arquivo(ip, porta, hash, nome):
         socket_cliente.connect((ip, int(porta)))
         mensagem = f"GET {hash}"
         socket_cliente.send(mensagem.encode('utf-8'))
+        print(f'\nMensagem enviada: {mensagem}\n')
 
         with open(os.path.join(informacao_cliente['nome_diretorio'], nome), 'wb') as arquivo:
             while True:
                 data = socket_cliente.recv(4096)
+                print(f'\nMensagem recebida: {data}\n')
                 if not data:
                     break
                 arquivo.write(data)
@@ -123,14 +147,27 @@ def requisita_arquivo(ip, porta, hash, nome):
         print(f"\nErro ao requisitar o arquivo: {nome}")
     finally:
         socket_cliente.close()
+def envia_recebe_udp(mensagem, endereco_servidor, socket_cliente):
+    try:
+        socket_cliente.sendto(mensagem.encode('utf-8'), endereco_servidor)
+        print(f'\nMensagem enviada: {mensagem}\n')
+        data, _ = socket_cliente.recvfrom(4096)
+        resposta = data.decode('utf-8')
+        print(f'\nMensagem recebida: {resposta}\n')
+        return resposta
+    except:
+        print(f'Erro ao tentar se comunicar com o servidor\n')
 
 def controle_udp():
     # Inicia a conexão UDP
     socket_cliente = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     
     endereco_servidor = ('localhost', 54494)
-    
-    mensagem = f"REG {informacao_cliente['senha']} {informacao_cliente['porta']} {listar_arquivos()}"
+    str_arquivos = string_arquivos()
+    if str_arquivos == '':
+        mensagem = f"REG {informacao_cliente['senha']} {informacao_cliente['porta']}"
+    else:
+        mensagem = f"REG {informacao_cliente['senha']} {informacao_cliente['porta']} {str_arquivos}"
     envia_recebe_udp(mensagem, endereco_servidor, socket_cliente)
     
     while True:
@@ -141,25 +178,25 @@ def controle_udp():
         print('3 - Sair')
         opcao = input('Opção: ')
         if opcao == '1':
-            try:
-                mensagem = f"UPD {informacao_cliente['senha']} {informacao_cliente['porta']} {listar_arquivos()}"
-                envia_recebe_udp(mensagem, endereco_servidor, socket_cliente)
-            except:
-                print('Erro ao tentar conectar no servidor')
-                sys.exit(0)
+            str_arquivos = string_arquivos()
+            if str_arquivos == '':
+                mensagem = f"UPD {informacao_cliente['senha']} {informacao_cliente['porta']}"
+            else:
+                mensagem = f"UPD {informacao_cliente['senha']} {informacao_cliente['porta']} {str_arquivos}"
+            envia_recebe_udp(mensagem, endereco_servidor, socket_cliente)
+            print('Erro ao tentar conectar no servidor')
         elif opcao == '2':
             #enviar LST para servidor
-            try:
-                mensagem = "LST"
-                resposta = envia_recebe_udp(mensagem, endereco_servidor, socket_cliente)
-                info_arquivo = menu_selecionar_arquivo(resposta)
-                ip, porta, hash, nome = menu_selecionar_host(info_arquivo)
-                requisita_arquivo(ip, porta, hash, nome)
-                mensagem = f"UPD {informacao_cliente['senha']} {informacao_cliente['porta']} {listar_arquivos()}"
-                envia_recebe_udp(mensagem, endereco_servidor, socket_cliente)
-            except:
-                print('Erro ao tentar conectar no servidor')
-                sys.exit(0)
+            mensagem = "LST"
+            resposta = envia_recebe_udp(mensagem, endereco_servidor, socket_cliente)
+            info_arquivo = menu_selecionar_arquivo(resposta)
+            if info_arquivo is None:
+                continue
+            ip, porta, hash, nome = menu_selecionar_host(info_arquivo)
+            requisita_arquivo(ip, porta, hash, nome)
+            str_arquivos = string_arquivos
+            mensagem = f"UPD {informacao_cliente['senha']} {informacao_cliente['porta']} {str_arquivos}"
+            envia_recebe_udp(mensagem, endereco_servidor, socket_cliente)
         elif opcao == '3':
             #enviar END para servidor
             mensagem = f"END {informacao_cliente['senha']} {informacao_cliente['porta']}"
@@ -195,7 +232,7 @@ def servico_tcp(client):
             client.sendall('Mensagem inválida')
 
     except Exception as e:
-        print(f"Erro no serviço TCP: {e}")
+        return
 
     finally:
         client.close()
@@ -218,12 +255,12 @@ def inicia_controle_udp():
 def main():    
     configurar_ambiente()
     
-    #start_new_thread(inicia_controle_tcp(), ())
-    start_new_thread(inicia_controle_udp(), ())
+    start_new_thread(inicia_controle_tcp, ())
+    start_new_thread(inicia_controle_udp, ())
 
     while True:
         time.sleep(60)
-        print('Cliente em execução')
+        print('\nCliente em execução')
 
 if __name__ == '__main__':
     if len(sys.argv) == 3:
