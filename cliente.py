@@ -61,11 +61,7 @@ def descobre_porta_disponivel():
 
     raise Exception("Nenhuma porta disponível encontrada")
 
-def configurar_ambiente():
-    #Pegando porta disponível
-    porta_tcp = descobre_porta_disponivel()
-    informacao_cliente['porta'] = porta_tcp
-    
+def configurar_ambiente():    
     #Gerando senha para conexão udp
     senha = gerar_senha()
     informacao_cliente['senha'] = senha
@@ -128,7 +124,7 @@ def menu_selecionar_arquivo(str_arquivos):
             print('Opção inválida. Tente novamente.')
 
 def menu_selecionar_host(arquivo_selecionado):
-    md5 , nome, *hosts = arquivo_selecionado.split(',')
+    nome , md5, *hosts = arquivo_selecionado.split(',')
     print(f'\nSelecione um host para baixar o arquivo "{nome}":')
     for i, host_info in enumerate(hosts):
         ip, porta = host_info.split(':')
@@ -224,8 +220,8 @@ def controle_udp():
             #enviar END para servidor
             mensagem = f"END {informacao_cliente['senha']} {informacao_cliente['porta']}"
             envia_recebe_udp(mensagem, endereco_servidor, socket_cliente)
-            socket_cliente.close()
             encerra_tcp = True
+            socket_cliente.close()
             sys.exit(0)
 
 def servico_tcp(client):
@@ -267,7 +263,6 @@ def servico_tcp(client):
         client.close()
 
 def controle_tcp():
-    global encerra_tcp
     _socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     _socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     _socket.bind((informacao_cliente['ip'], informacao_cliente['porta']))
@@ -275,8 +270,6 @@ def controle_tcp():
     while True:
         client, addr = _socket.accept()
         start_new_thread(servico_tcp, (client, ))
-        if encerra_tcp:
-            _socket.close()
         
 def inicia_controle_tcp():
     controle_tcp()
@@ -287,10 +280,15 @@ def inicia_controle_udp():
 def main():    
     configurar_ambiente()
     
+    #Descobre porta disponível para abrir escuta TCP
+    porta_tcp = descobre_porta_disponivel()
+    informacao_cliente['porta'] = porta_tcp
     start_new_thread(inicia_controle_tcp, ())
     start_new_thread(inicia_controle_udp, ())
 
     while True:
+        if encerra_tcp:
+            sys.exit(0)
         time.sleep(1)
 
 if __name__ == '__main__':
