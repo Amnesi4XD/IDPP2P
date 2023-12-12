@@ -2,41 +2,51 @@
 
 ## Sumário
 - [Introdução](#introdução)
-- [Arquivo Cliente (`cliente.py`)](#arquivo-cliente-clientepy)
 - [Arquivo Servidor (`servidor.py`)](#arquivo-servidor-servidorpy)
-- [Fluxo de Execução](#fluxo-de-execução)
+- [Arquivo Cliente (`cliente.py`)](#arquivo-cliente-clientepy)
+- [Execução](#execução)
+- [Fluxo de Execução do Cliente](#fluxo-de-execução-do-cliente)
 - [Conclusão](#conclusão)
 
 ## Introdução
-Este documento descreve a implementação e o funcionamento do protocolo utilizado na comunicação entre cliente e servidor. O objetivo é fornecer informações suficientes para que outros desenvolvedores possam compreender e trabalhar com o código.
-
-## Arquivo Cliente (`cliente.py`)
-O arquivo `cliente.py` implementa a lógica do cliente em uma rede de compartilhamento de arquivos. Principais funções:
-
-- `gerar_senha()`: Gera uma senha aleatória.
-- `string_arquivos()`: Lista os arquivos disponíveis no diretório do cliente.
-- `porta_disponivel()`, `descobre_porta_disponivel()`: Verifica e encontra uma porta de rede disponível.
-- `configurar_ambiente()`: Configura o ambiente inicial do cliente.
-- `envia_recebe_udp()`: Envia e recebe mensagens via UDP.
-- `menu_selecionar_arquivo()`, `menu_selecionar_host()`: Interfaces de usuário para selecionar arquivos e hosts.
-- `requisita_arquivo()`: Requisita um arquivo de outro cliente.
-- `controle_tcp()`, `controle_udp()`: Gerencia as conexões TCP e UDP.
+Esta documentação detalha a implementação e o funcionamento do protocolo de comunicação entre um servidor e múltiplos clientes em uma rede de compartilhamento de arquivos. Ela oferece uma visão geral sobre como executar e interagir com os componentes do sistema.
 
 ## Arquivo Servidor (`servidor.py`)
-O arquivo `servidor.py` implementa a lógica do servidor. Principais funções:
+O `servidor.py` é o arquivo principal do servidor. Ele gerencia as conexões e as requisições dos clientes, mantendo o registro dos arquivos disponíveis na rede e gerenciando as atualizações dos clientes.
 
-- `registrar_cliente()`: Registra um novo cliente no servidor.
-- `atualizar_cliente()`: Atualiza informações de um cliente registrado.
-- `listar_arquivos()`: Lista todos os arquivos disponíveis na rede.
-- `desconectar_cliente()`: Desconecta um cliente do servidor.
-- `main()`: Função principal que inicia o servidor e aguarda mensagens dos clientes.
+### Execução
+Para iniciar o servidor, execute o seguinte comando no terminal:
 
-## Fluxo de Execução
-1. **Início do Cliente**: O cliente inicia, configura seu ambiente e inicia os serviços TCP e UDP.
-2. **Registro no Servidor**: O cliente se registra no servidor via UDP, enviando suas informações.
-3. **Listagem e Seleção de Arquivos**: O cliente pode solicitar a lista de arquivos disponíveis e selecionar um para download.
-4. **Transferência de Arquivos**: A transferência de arquivos ocorre através de uma conexão TCP entre os clientes.
-5. **Atualização e Encerramento**: O cliente pode atualizar suas informações no servidor ou se desconectar.
+`python3 servidor.py`
+
+
+## Arquivo Cliente (`cliente.py`)
+O `cliente.py` é o arquivo principal do cliente, que interage com a rede para compartilhar e baixar arquivos. Além do arquivo principal, podem existir outros arquivos auxiliares para ajudar na execução do cliente.
+
+### Execução
+Para iniciar o cliente, utilize o comando:
+
+`python3 cliente.py <IP> <DIRETORIO>`
+
+Onde:
+- `<IP>` é o endereço IP do servidor.
+- `<DIRETORIO>` é o diretório contendo os arquivos a serem compartilhados e onde os arquivos baixados serão salvos.
+
+### Fluxo de Execução do Cliente
+Ao ser executado, o cliente realiza as seguintes ações:
+1. Descobre uma porta TCP disponível para aceitar conexões de outros clientes.
+2. Decide uma senha para se registrar no servidor.
+3. Lista os arquivos que deseja compartilhar.
+4. Envia uma mensagem de registro para o servidor.
+
+Paralelamente, o cliente:
+- Aceita conexões TCP de outros clientes para envio de arquivos na porta informada ao servidor.
+- Interage com o usuário, recebendo comandos para:
+  * Listar arquivos disponíveis na rede.
+  * Baixar um arquivo.
+  * Desconectar do cliente.
+
+Devido à necessidade de executar atividades paralelas, o uso de threads é essencial na implementação do cliente.
 
 ## Conclusão
-Esta documentação apresenta uma visão geral da implementação do cliente e do servidor. É importante que futuros desenvolvedores revisem o código-fonte para uma compreensão mais detalhada das funcionalidades específicas.
+Esta documentação fornece um guia conciso e claro sobre a configuração e operação do sistema de compartilhamento de arquivos. A compreensão detalhada desta documentação é crucial para qualquer desenvolvedor ou usuário que pretenda trabalhar com ou expandir o sistema. Encorajamos a revisão e familiarização com o código-fonte para uma compreensão mais profunda das funções específicas e da arquitetura do sistema.
