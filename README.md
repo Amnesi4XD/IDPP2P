@@ -30,12 +30,14 @@ Para iniciar o cliente, utilize o comando:
 
 Onde:
 - `<IP>` é o endereço IP do servidor.
-- `<DIRETORIO>` é o diretório contendo os arquivos a serem compartilhados e onde os arquivos baixados serão salvos.
+- `<DIRETORIO>` é o path do diretório contendo os arquivos a serem compartilhados e onde os arquivos baixados serão salvos. 
 
 ### Fluxo de Execução do Cliente
 Ao ser executado, o cliente realiza as seguintes ações:
-1. Descobre uma porta TCP disponível para aceitar conexões de outros clientes.
-2. Decide uma senha para se registrar no servidor.
+1. Decide uma senha para se registrar no servidor. O usuário pode optar por inserir uma senha manualmente ou ter ela gerada automaticamente
+2. Checa se o path do diretorio informado existe, caso não exista, pergunta ao usuário caso ele deseje criá-lo
+3. Descobre uma porta TCP disponível para aceitar conexões de outros clientes.
+4. Envia uma requisição para se registar no servidor
 3. Lista os arquivos que deseja compartilhar.
 4. Envia uma mensagem de registro para o servidor.
 
