@@ -19,13 +19,11 @@ def registrar_cliente(mensagem, endereco_cliente):
         informacoes_cliente[endereco_cliente] = {'senha': senha, 'porta': porta, 'arquivos': {}}
         informacoes_cliente[endereco_cliente]['arquivos'] = {}
         return "OK 0_REGISTERED_FILES"
-    lista_arquivos = mensagem[3:]
+    str_arquivos = mensagem[3]
 
     arquivos_compartilhados = 0
 
-    for info_arquivo in lista_arquivos:
-        # Remova espaços em branco e caracteres de vírgula adicionais
-        info_arquivo = info_arquivo.strip(', ')
+    for info_arquivo in str_arquivos.split(';'):
         
         partes_mensagem_arquivo = info_arquivo.split(',')
         if len(partes_mensagem_arquivo) == 2:

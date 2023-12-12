@@ -11,6 +11,8 @@ from hashlib import md5
 
 informacao_cliente = {}
 
+encerra_tcp = False
+
 def gerar_senha():
     tamanho = 8
     caracteres = string.ascii_letters + string.digits + string.punctuation
@@ -84,30 +86,49 @@ def envia_recebe_udp(mensagem, endereco_servidor, socket_cliente):
 
 # Cria menu interativo para cliente selecionar arquivo que deseja baixar
 def menu_selecionar_arquivo(str_arquivos):
-    if not str_arquivos:
-        print('Não há arquivos disponíveis para download.')
-        return None
+    while True:
+        if not str_arquivos:
+            print('Não há arquivos disponíveis para download.\n')
+            return None
 
-    # Transforma a string em uma lista de arquivos
-    arquivos_lista = str_arquivos.split(';')
+        # Transforma a string em uma lista de arquivos
+        arquivos_lista = str_arquivos.split(';')
 
-    print('Selecione um arquivo que deseja baixar:')
-    for i, arquivo_info in enumerate(arquivos_lista):
-        md5, nome, *hosts = arquivo_info.split(',')
-        
-        # Verifica se o IP e a porta do cliente estão na lista de hosts do arquivo
-        if (str(informacao_cliente['ip']) + ':' + str((informacao_cliente['porta']))) not in hosts:
-            print(f'{i + 1} - Nome: {nome}, Hash: {md5}')
+        # Verifica se há arquivos disponíveis para download
+        arquivos_disponiveis = False
+        for arquivo_info in arquivos_lista:
+            md5, nome, *hosts = arquivo_info.split(',')
+            
+            # Verifica se o IP e a porta do cliente estão na lista de hosts do arquivo
+            if (str(informacao_cliente['ip']) + ':' + str((informacao_cliente['porta']))) not in hosts:
+                arquivos_disponiveis = True
+                break
 
-    opcao = int(input('\nOpção: '))
+        if not arquivos_disponiveis:
+            print('Não há arquivos disponíveis para download.\n')
+            return None
 
-    # Verifica se a opção selecionada está dentro do índice da arquivos_lista
-    if 1 <= opcao <= len(arquivos_lista):
-        arquivo_selecionado = arquivos_lista[opcao - 1]
-        return arquivo_selecionado
-    else:
-        print('Opção inválida.')
-        return None
+        print('Selecione um arquivo que deseja baixar:')
+        for i, arquivo_info in enumerate(arquivos_lista):
+            md5, nome, *hosts = arquivo_info.split(',')
+            
+            # Verifica se o IP e a porta do cliente estão na lista de hosts do arquivo
+            if (str(informacao_cliente['ip']) + ':' + str((informacao_cliente['porta']))) not in hosts:
+                print(f'{i + 1} - Nome: {nome}, Hash: {md5}')
+
+        print('0 - Sair')
+        opcao = int(input('\nOpção: '))
+
+        # Verifica se a opção selecionada está dentro do índice da arquivos_lista
+        if 0 <= opcao <= len(arquivos_lista):
+            if opcao == 0:
+                print('Saindo do menu de seleção de arquivo.')
+                return None
+            else:
+                arquivo_selecionado = arquivos_lista[opcao - 1]
+                return arquivo_selecionado
+        else:
+            print('Opção inválida. Tente novamente.')
 
 
 def menu_selecionar_host(arquivo_selecionado):
@@ -159,6 +180,7 @@ def envia_recebe_udp(mensagem, endereco_servidor, socket_cliente):
         print(f'Erro ao tentar se comunicar com o servidor\n')
 
 def controle_udp():
+    global encerra_tcp
     # Inicia a conexão UDP
     socket_cliente = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     
@@ -202,6 +224,7 @@ def controle_udp():
             mensagem = f"END {informacao_cliente['senha']} {informacao_cliente['porta']}"
             envia_recebe_udp(mensagem, endereco_servidor, socket_cliente)
             socket_cliente.close()
+            encerra_tcp = True
             sys.exit(0)
 
 def servico_tcp(client):
@@ -245,6 +268,8 @@ def controle_tcp():
     while True:
         client, addr = _socket.accept()
         start_new_thread(servico_tcp, (client, ))
+        if encerra_tcp:
+            _socket.close()
         
 def inicia_controle_tcp():
     controle_tcp()
