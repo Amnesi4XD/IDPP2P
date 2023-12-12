@@ -3,21 +3,28 @@
 import secrets
 import string
 import sys
-import time
 import socket
 from _thread import *
 import os
 from hashlib import md5
+import time
 
 informacao_cliente = {}
 
 encerra_tcp = False
 
 def gerar_senha():
-    tamanho = 8
-    caracteres = string.ascii_letters + string.digits + string.punctuation
-    senha = ''.join(secrets.choice(caracteres) for _ in range(tamanho))
-    return senha
+    print("Deseja informar uma senha para conexão ou cria-la automaticamente?")
+    opcao = input("S/N: ")
+    if(opcao.upper() == "S"):
+        senha = input("Digite a senha: ")
+        return senha
+    else:
+        tamanho = 8
+        caracteres = string.ascii_letters + string.digits + string.punctuation
+        senha = ''.join(secrets.choice(caracteres) for _ in range(tamanho))
+        print("Senha gerada automaticamente: " + senha)
+        return senha
 
 def string_arquivos():
     lista = []
@@ -40,10 +47,10 @@ def string_arquivos():
 def porta_disponivel(porta):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     try:
-        sock.connect(('127.0.0.1', porta))
-        return False  # Conexão bem-sucedida, a porta está em uso
-    except ConnectionRefusedError:
-        return True   # Conexão recusada, a porta está disponível
+        sock.bind(('127.0.0.1', porta))
+        return True  # Vinculação bem-sucedida, a porta está disponível
+    except OSError as e:
+        return False # Vinculação falhou, a porta não está disponível
     finally:
         sock.close()
 
@@ -95,41 +102,30 @@ def menu_selecionar_arquivo(str_arquivos):
         arquivos_lista = str_arquivos.split(';')
 
         # Verifica se há arquivos disponíveis para download
-        arquivos_disponiveis = False
-        for arquivo_info in arquivos_lista:
-            md5, nome, *hosts = arquivo_info.split(',')
-            
-            # Verifica se o IP e a porta do cliente estão na lista de hosts do arquivo
-            if (str(informacao_cliente['ip']) + ':' + str((informacao_cliente['porta']))) not in hosts:
-                arquivos_disponiveis = True
-                break
+        arquivos_disponiveis = [arquivo for arquivo in arquivos_lista if (str(informacao_cliente['ip']) + ':' + str((informacao_cliente['porta']))) not in arquivo.split(',')[2:]]
 
         if not arquivos_disponiveis:
             print('Não há arquivos disponíveis para download.\n')
             return None
 
         print('Selecione um arquivo que deseja baixar:')
-        for i, arquivo_info in enumerate(arquivos_lista):
+        for i, arquivo_info in enumerate(arquivos_disponiveis, start=1):
             md5, nome, *hosts = arquivo_info.split(',')
-            
-            # Verifica se o IP e a porta do cliente estão na lista de hosts do arquivo
-            if (str(informacao_cliente['ip']) + ':' + str((informacao_cliente['porta']))) not in hosts:
-                print(f'{i + 1} - Nome: {nome}, Hash: {md5}')
+            print(f'{i} - Nome: {nome}, Hash: {md5}')
 
         print('0 - Sair')
         opcao = int(input('\nOpção: '))
 
-        # Verifica se a opção selecionada está dentro do índice da arquivos_lista
-        if 0 <= opcao <= len(arquivos_lista):
+        # Verifica se a opção selecionada está dentro do índice dos arquivos disponíveis
+        if 0 <= opcao <= len(arquivos_disponiveis):
             if opcao == 0:
                 print('Saindo do menu de seleção de arquivo.')
                 return None
             else:
-                arquivo_selecionado = arquivos_lista[opcao - 1]
+                arquivo_selecionado = arquivos_disponiveis[opcao - 1]
                 return arquivo_selecionado
         else:
             print('Opção inválida. Tente novamente.')
-
 
 def menu_selecionar_host(arquivo_selecionado):
     md5 , nome, *hosts = arquivo_selecionado.split(',')
@@ -160,14 +156,19 @@ def requisita_arquivo(ip, porta, hash, nome):
         with open(os.path.join(informacao_cliente['nome_diretorio'], nome), 'wb') as arquivo:
             while True:
                 data = socket_cliente.recv(4096)
-                print(f'\nMensagem recebida: {data}\n')
                 if not data:
                     break
                 arquivo.write(data)
     except Exception as e:
         print(f"\nErro ao requisitar o arquivo: {nome}")
     finally:
+        print('Selecione uma opção:')
+        print('1 - Atualizar arquivos disponíveis')
+        print('2 - Baixar um arquivo')
+        print('3 - Sair')
+        print('Opção:')
         socket_cliente.close()
+        
 def envia_recebe_udp(mensagem, endereco_servidor, socket_cliente):
     try:
         socket_cliente.sendto(mensagem.encode('utf-8'), endereco_servidor)
@@ -258,9 +259,15 @@ def servico_tcp(client):
         return
 
     finally:
+        print('Selecione uma opção:')
+        print('1 - Atualizar arquivos disponíveis')
+        print('2 - Baixar um arquivo')
+        print('3 - Sair')
+        print('Opção:')
         client.close()
 
 def controle_tcp():
+    global encerra_tcp
     _socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     _socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     _socket.bind((informacao_cliente['ip'], informacao_cliente['porta']))
@@ -284,8 +291,7 @@ def main():
     start_new_thread(inicia_controle_udp, ())
 
     while True:
-        time.sleep(60)
-        print('\nCliente em execução')
+        time.sleep(1)
 
 if __name__ == '__main__':
     if len(sys.argv) == 3:

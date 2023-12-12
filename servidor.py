@@ -31,19 +31,24 @@ def registrar_cliente(mensagem, endereco_cliente):
             # Adiciona o arquivo ao cliente
             if endereco_cliente not in informacoes_cliente:
                 informacoes_cliente[endereco_cliente] = {'senha': senha, 'porta': porta, 'arquivos': {}}
-            informacoes_cliente[endereco_cliente]['arquivos'][nome_arquivo] = hash_arquivo
+            informacoes_cliente[endereco_cliente]['arquivos'][hash_arquivo] = nome_arquivo
             arquivos_compartilhados += 1
         
     return f"OK {arquivos_compartilhados}_REGISTERED_FILES"
 
 # Função para processar mensagens UPD
 def atualizar_cliente(mensagem, endereco_cliente):
-    if len(mensagem) < 4:
+    if len(mensagem) < 3:
         return "ERR INVALID_MESSAGE_FORMAT"
 
     senha = mensagem[1]
     porta = mensagem[2]
-    lista_arquivos = mensagem[3:]
+    if len(mensagem) == 3:
+        lista_arquivos = []
+        informacoes_cliente[endereco_cliente] = {'senha': senha, 'porta': porta, 'arquivos': {}}
+        informacoes_cliente[endereco_cliente]['arquivos'] = {}
+        return "OK 0_REGISTERED_FILES"
+    str_arquivos = mensagem[3]
 
     # Verifica se o cliente está registrado
     if (senha, porta) not in [(info['senha'], info['porta']) for info in informacoes_cliente.values()]:
@@ -51,17 +56,12 @@ def atualizar_cliente(mensagem, endereco_cliente):
 
     arquivos_atualizados = 0
     
-    for info_arquivo in lista_arquivos:
-        # Remova espaços em branco e caracteres de vírgula adicionais
-        info_arquivo = info_arquivo.strip(', ')
-        
+    for info_arquivo in str_arquivos.split(';'):
+
         partes_mensagem_arquivo = info_arquivo.split(',')
         if len(partes_mensagem_arquivo) == 2:
             hash_arquivo, nome_arquivo = partes_mensagem_arquivo
-            # Adiciona o arquivo ao cliente
-            if endereco_cliente not in informacoes_cliente:
-                informacoes_cliente[endereco_cliente] = {'senha': senha, 'porta': porta, 'arquivos': {}}
-            informacoes_cliente[endereco_cliente]['arquivos'][nome_arquivo] = hash_arquivo
+            informacoes_cliente[endereco_cliente]['arquivos']['hash_arquivo'] = nome_arquivo
             arquivos_atualizados += 1
 
     return f"OK {arquivos_atualizados}_REGISTERED_FILES"
@@ -74,7 +74,7 @@ def listar_arquivos():
     for endereco_cliente, info_cliente in informacoes_cliente.items():
         for nome_arquivo, hash_arquivo in info_cliente['arquivos'].items():
             # Verifica se o arquivo já está na lista
-            arquivo_existente = next((arquivo_item for arquivo_item in lista_arquivos if arquivo_item['nome'] == nome_arquivo), None)
+            arquivo_existente = next((arquivo_item for arquivo_item in lista_arquivos if arquivo_item['hash'] == hash_arquivo), None)
 
             if arquivo_existente:
                 # Adiciona o IP e porta do cliente ao arquivo existente
